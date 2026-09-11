@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: mobile-automation-control-plane
-Version: 0.1.0
-Summary: Confirmed, stateful workflows for mobile UI automation
-Requires-Python: >=3.11
-Provides-Extra: dev
-Requires-Dist: pytest>=8; extra == "dev"
