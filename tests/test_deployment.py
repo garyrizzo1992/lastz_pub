@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class DeploymentTests(unittest.TestCase):
     def setUp(self):
         self.env = jinja2.Environment(loader=jinja2.FileSystemLoader(
-            ROOT / "deployment/ansible/roles/worker/templates"), undefined=jinja2.StrictUndefined)
+            ROOT / "deployment/ansible/roles/automation/templates"), undefined=jinja2.StrictUndefined)
         self.env.filters["quote"] = shlex.quote
         self.values = {
             "automation_data_dir": "/Users/Demo & Test/Library/Application Support/Worker",
@@ -50,7 +50,7 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_preflight_is_in_tasks_and_lock_has_cleanup(self):
-        tasks = yaml.safe_load((ROOT / "deployment/ansible/roles/worker/tasks/main.yaml").read_text())
+        tasks = yaml.safe_load((ROOT / "deployment/ansible/roles/automation/tasks/main.yaml").read_text())
         block = next(t for t in tasks if "block" in t)
         self.assertTrue(any("preflight" in t["name"].lower() for t in block["block"]))
         self.assertIn("always", block)

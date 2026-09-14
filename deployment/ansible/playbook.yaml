@@ -3,4 +3,4 @@
   hosts: automation
   become: false
   roles:
-    - worker
+    - automation

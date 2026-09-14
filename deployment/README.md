@@ -19,7 +19,7 @@ python3 -m venv .ansible-venv
 .ansible-venv/bin/ansible-playbook -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml -e "automation_revision=$(git rev-parse HEAD)"
 ```
 
-Defaults are in roles/worker/defaults/main.yaml. Copy vars.example.yaml to a local
+Defaults are in roles/automation/defaults/main.yaml. Copy vars.example.yaml to a local
 settings.yaml to override paths or the revision; add -e @settings.yaml to the
 command. For a remote Mac replace the localhost inventory entry with its private
 hostname and SSH user. Do not commit real inventory or credentials.
@@ -67,7 +67,7 @@ Its own playbook uses role worker and supplies only private values:
 - name: Deploy private worker
   hosts: automation
   roles:
-    - role: worker
+    - role: automation
       vars:
         automation_repo_url: "{{ private_repo_url }}"
         automation_revision: "{{ approved_commit }}"
