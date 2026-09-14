@@ -53,3 +53,10 @@ class DeploymentTests(unittest.TestCase):
         block = next(t for t in tasks if "block" in t)
         self.assertTrue(any("preflight" in t["name"].lower() for t in block["block"]))
         self.assertIn("always", block)
+
+    def test_migration_check_is_a_minimal_existence_probe(self):
+        tasks = yaml.safe_load((ROOT / "deployment/ansible/roles/automation/tasks/migrate.yaml").read_text())
+        check = tasks[0]
+        self.assertEqual(check["ansible.builtin.command"]["argv"][:2], ["/bin/test", "-e"])
+        self.assertFalse(check["changed_when"])
+        self.assertFalse(check["failed_when"])

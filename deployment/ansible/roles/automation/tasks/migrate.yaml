@@ -1,15 +1,17 @@
 ---
-- name: Inspect migration source
-  ansible.builtin.stat:
-    path: "{{ automation_migration.src }}"
+- name: Check migration source exists
+  ansible.builtin.command:
+    argv: [/bin/test, -e, "{{ automation_migration.src }}"]
   register: automation_source
+  changed_when: false
+  failed_when: false
 
 - name: Create state destination parent
   ansible.builtin.file:
     path: "{{ (automation_data_dir ~ '/' ~ automation_migration.dest) | dirname }}"
     state: directory
     mode: "0700"
-  when: automation_source.stat.exists
+  when: automation_source.rc == 0
 
 - name: Copy state without replacing current data
   ansible.builtin.copy:
@@ -18,4 +20,4 @@
     remote_src: true
     force: false
     mode: "0600"
-  when: automation_source.stat.exists
+  when: automation_source.rc == 0
