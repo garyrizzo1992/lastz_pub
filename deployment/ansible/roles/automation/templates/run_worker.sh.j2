@@ -17,7 +17,7 @@ cd {{ automation_repo_dir | quote }}
 python_bin={{ (automation_repo_dir ~ '/.venv/bin/python') | quote }}
 command_args=({% for arg in automation_arguments %}{{ arg | quote }} {% endfor %})
 if [[ "${1:-}" == "--preflight" ]]; then
-    exec "$python_bin" "${command_args[@]}" {% for arg in automation_preflight_arguments %}{{ arg | quote }} {% endfor %}
+    exec "$python_bin" "${command_args[@]}" {{ automation_preflight_arguments | map('quote') | join(' ') }}
 fi
 if [[ -d {{ (automation_data_dir ~ '/deploy.lock') | quote }} ]]; then
     printf 'Deployment in progress; startup deferred.\n' >&2

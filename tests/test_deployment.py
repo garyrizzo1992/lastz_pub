@@ -18,8 +18,12 @@ ROOT = Path(__file__).resolve().parents[1]
 @unittest.skipIf(jinja2 is None, "Jinja2 and PyYAML required")
 class DeploymentTests(unittest.TestCase):
     def setUp(self):
-        self.env = jinja2.Environment(loader=jinja2.FileSystemLoader(
-            ROOT / "deployment/ansible/roles/automation/templates"), undefined=jinja2.StrictUndefined)
+        self.env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(ROOT / "deployment/ansible/roles/automation/templates"),
+            undefined=jinja2.StrictUndefined,
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
         self.env.filters["quote"] = shlex.quote
         self.values = {
             "automation_data_dir": "/Users/Demo & Test/Library/Application Support/Worker",
@@ -47,6 +51,10 @@ class DeploymentTests(unittest.TestCase):
             source = self.env.get_template(template).render(**self.values)
             result = subprocess.run([bash, "-n"], input=source, text=True, capture_output=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_preflight_arguments_remain_separate_from_fi(self):
+        source = self.env.get_template("run_worker.sh.j2").render(**self.values)
+        self.assertIn('--preflight\nfi', source)
 
     def test_preflight_is_in_tasks_and_lock_has_cleanup(self):
         tasks = yaml.safe_load((ROOT / "deployment/ansible/roles/automation/tasks/main.yaml").read_text())
