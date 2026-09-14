@@ -1,21 +1,21 @@
 ---
 - name: Inspect migration source
   ansible.builtin.stat:
-    path: "{{ worker_migration.src }}"
-  register: worker_source
+    path: "{{ automation_migration.src }}"
+  register: automation_source
 
 - name: Create state destination parent
   ansible.builtin.file:
-    path: "{{ (automation_data_dir ~ '/' ~ worker_migration.dest) | dirname }}"
+    path: "{{ (automation_data_dir ~ '/' ~ automation_migration.dest) | dirname }}"
     state: directory
     mode: "0700"
-  when: worker_source.stat.exists
+  when: automation_source.stat.exists
 
 - name: Copy state without replacing current data
   ansible.builtin.copy:
-    src: "{{ worker_migration.src }}"
-    dest: "{{ automation_data_dir }}/{{ worker_migration.dest }}"
+    src: "{{ automation_migration.src }}"
+    dest: "{{ automation_data_dir }}/{{ automation_migration.dest }}"
     remote_src: true
     force: false
     mode: "0600"
-  when: worker_source.stat.exists
+  when: automation_source.stat.exists
