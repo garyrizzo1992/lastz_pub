@@ -1,5 +1,5 @@
 ---
-- name: Deploy the synthetic mobile automation worker
+- name: Deploy a configured Python automation service
   hosts: automation
   become: false
   roles:

@@ -1,8 +1,8 @@
-# Deploying the portfolio worker
+# Deploying a private Python service
 
-This deploys the synthetic simulator shipped in this repository. It does not
-connect to a phone, expose a network service, or contain production access.
-The same role can deploy a different Python entry point through variables.
+This repository contains deployment infrastructure, not an application. Supply
+your application's repository, revision, and Python entry point through variables.
+No production access or real inventory is included.
 
 ## Try on a Mac
 
@@ -16,7 +16,8 @@ python3 -m venv .ansible-venv
 .ansible-venv/bin/pip install ansible-core==2.19.3
 .ansible-venv/bin/ansible-galaxy collection install -r deployment/ansible/requirements.yaml
 .ansible-venv/bin/ansible-playbook -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml --syntax-check
-.ansible-venv/bin/ansible-playbook -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml -e "automation_revision=$(git rev-parse HEAD)"
+# First copy vars.example.yaml to settings.yaml and set your application values.
+.ansible-venv/bin/ansible-playbook -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml -e @settings.yaml
 ```
 
 Defaults are in roles/automation/defaults/main.yaml. Copy vars.example.yaml to a local
@@ -24,10 +25,9 @@ settings.yaml to override paths or the revision; add -e @settings.yaml to the
 command. For a remote Mac replace the localhost inventory entry with its private
 hostname and SSH user. Do not commit real inventory or credentials.
 
-The worker logs a simulated confirmed action once per minute and writes
-workflow_state.json under ~/Library/Application Support/MobileAutomation.
-No template matching, OCR or real-device adapter is implemented by this demo.
-A semantic screen simulator demonstrates the orchestration contract.
+The application must support the configured preflight arguments (default:
+--preflight). It must also read its external data/configuration paths; configure
+application-specific environment variables through automation_environment.
 
 ## Deployment contract
 
@@ -48,8 +48,9 @@ worktree. Manual workers must be stopped before deployment.
 The launcher is installed outside Git and does not pull at startup. This ensures
 the revision tested by CI is the revision started after a crash or reboot.
 Set automation_revision to a full reviewed SHA for reproducibility and rollback.
-The default main is convenient for exploration only. The bundled simulator has
-no runtime third-party dependencies; its build backend is pinned separately.
+The default main is convenient for exploration only. Set automation_requirements
+to the application's requirements file, or leave it empty for an editable Python
+package install. The application owns its dependency pins.
 
 The existing virtual environment is reused. Changing Python minor versions
 requires recreating it during a maintenance window. Rollback restores source
@@ -61,7 +62,7 @@ active before removing that empty directory with rmdir.
 
 A private consumer can check out a reviewed SHA of this public repository, then
 set ANSIBLE_ROLES_PATH to that checkout's deployment/ansible/roles directory.
-Its own playbook uses role worker and supplies only private values:
+Its own playbook uses role automation and supplies only private values:
 
 ```yaml
 - name: Deploy private worker
@@ -107,7 +108,7 @@ restricted permissions on the target.
 cp deployment/ansible/vault.example.yaml vault.yaml
 # Edit the placeholder, then:
 .ansible-venv/bin/ansible-vault encrypt vault.yaml
-.ansible-venv/bin/ansible-playbook -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml -e @vault.yaml --ask-vault-pass
+.ansible-venv/bin/ansible-playbook -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml -e @settings.yaml -e @vault.yaml --ask-vault-pass
 ```
 
 For unattended deployments supply --vault-password-file pointing to a protected
@@ -118,7 +119,9 @@ code running as that user; never let untrusted CI execute on the production host
 ## CI/CD example
 
 workflows/deploy-macos.yaml.example is deliberately inactive. Copy and adapt it
-in a trusted PRIVATE repository. It runs tests on a hosted runner, resolves the
+in a trusted PRIVATE application repository. Adapt its dependency/test commands
+to that application, keep settings.yaml private, and vendor or pin this repository's
+deployment directory before using the example paths. It runs tests on a hosted runner, resolves the
 requested revision to a SHA, then deploys that SHA on a Mac runner labelled
 automation-deploy. Run registration under the GUI user with the runner checkout
 separate from the application's deployment checkout.
@@ -129,7 +132,7 @@ and retain the verify-job dependency. Do not add pull_request deployment trigger
 The example needs repository read access on the target for the deployment clone.
 
 Public CI runs only on GitHub-hosted runners. It validates Ansible syntax/lint,
-template rendering, shell quoting, and the simulator on Linux, macOS and Windows.
+template rendering and shell quoting on Linux, macOS and Windows.
 It never deploys to production.
 
 ## Operations
@@ -144,7 +147,7 @@ A non-zero exit is restarted with a 60-second throttle. Successful exit is not
 restarted. Registration is not proof of game-loop health. stdout/stderr are
 checked hourly by a second agent and rotated above 10 MB with seven compressed
 archives. copytruncate can lose a small amount of output during rotation.
-The worker's SIGTERM handler wakes its wait so service stops are prompt.
+The application should handle SIGTERM for a clean service stop.
 
 To disable login startup, boot out the worker and rotation agent, then remove
 their specific plist files from ~/Library/LaunchAgents. Preserve external state.

@@ -1,74 +1,28 @@
-# Mobile automation control plane
+# macOS automation deployment
 
-A small, testable reference implementation for running durable mobile UI
-automation safely. It models the parts that matter in a long-running automation
-service: bounded recovery, confirmed actions, persistent state, and observable
-results.
+Reusable deployment infrastructure for a private Python automation service.
+This repository contains deployment code only: no bot, simulator, game assets,
+production inventory, or credentials.
 
-This repository intentionally contains no application-specific flows, real
-screenshots, Android identifiers, accounts, credentials, or deployment access.
-The accompanying production system is private.
+## Included
 
-See [Deploying the worker](deployment/README.md) for the reusable macOS Ansible
-role, LaunchAgent, state migration, Vault configuration, log rotation, and an
-inactive private CI/CD workflow example. The role deploys a persistent simulator
-from this repository; no phone or production runner is needed.
+- Ansible role for Python dependencies and reviewed Git revisions.
+- LaunchAgent startup at login and restart after failure.
+- External configuration/state, optional Vault secrets, and state migration.
+- Advisory preflight checks and log rotation.
+- Hosted CI for Ansible validation and cross-platform template tests.
+- Inactive private deployment workflow example.
 
-## What it demonstrates
+See [deployment instructions](deployment/README.md) for configuration and use.
+Consumers supply their own application repository and Python entry point.
+Public CI has no production access.
 
-- A device interface that separates automation logic from ADB, Appium, or a
-  simulator.
-- A workflow that clicks only after confirming the expected state, then verifies
-  its postcondition.
-- Bounded retries and explicit `completed`, `unavailable`, and `failed` results.
-- A JSON state store outside the source checkout, so updates do not erase
-  operational cooldowns or history.
-- Deterministic simulation tests that exercise happy paths and failures without
-  a connected phone.
-
-## Run it
-
-Python 3.11 or newer is sufficient.
+## Test locally
 
 ```bash
-python -m pip install -e ".[dev]"
-python examples/run_demo.py
+python -m pip install -r requirements-test.txt
 python -m unittest discover -s tests
 ```
 
-The demo opens a synthetic notification panel, claims a reward, confirms the
-result, and stores the outcome in a temporary external state directory.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    Worker[Periodic simulator worker] --> Workflow
-    Workflow -->|observe| Device[Device client]
-    Workflow -->|confirmed tap| Device
-    Device --> Simulator[Simulator or real adapter]
-    Workflow --> State[External state store]
-    Workflow --> Result[Structured result]
-```
-
-The production adapter can use ADB screenshots, OCR, and template matching. The
-public project uses a deterministic simulator so the safety rules remain visible
-and reviewable without exposing the target application.
-
-## Design choices
-
-An action is not considered successful because a coordinate was clicked. It must
-observe its expected screen first and its expected result afterward. A missing
-screen is `unavailable`; an ambiguous screen or missing postcondition is
-`failed`. This makes failures diagnosable and avoids cascading input on an
-unknown UI.
-
-State belongs outside the source checkout. A service can update source code
-without losing its action history, cooldowns, or last-known outcome.
-
-## Portfolio notes
-
-This project is paired with a private deployment that uses macOS launchd,
-Ansible, external runtime state, dependency checks, and a hardware-backed mobile
-device. The public project focuses on the reusable engineering ideas and gives
-them a runnable, safe test harness.
+Ansible syntax and lint checks require a Linux/macOS controller (or WSL).
+The managed service target is macOS; template tests also run on Linux and Windows.

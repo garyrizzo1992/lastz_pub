@@ -5,13 +5,13 @@ automation_python_formula: python@3.13
 automation_python_name: python3.13
 automation_python: "{{ automation_brew_prefix }}/opt/{{ automation_python_formula }}/bin/{{ automation_python_name }}"
 automation_path: "{{ automation_brew_prefix }}/bin:{{ automation_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
-automation_repo_url: https://github.com/garyrizzo1992/lastz_pub.git
+automation_repo_url: ""
 automation_revision: main
 automation_repo_dir: "{{ automation_home }}/Applications/mobile-automation"
 automation_data_dir: "{{ automation_home }}/Library/Application Support/MobileAutomation"
 automation_label: org.example.mobile-automation
 automation_plist: "{{ automation_home }}/Library/LaunchAgents/{{ automation_label }}.plist"
-automation_arguments: [-m, mobile_automation.worker]
+automation_arguments: []
 automation_preflight_arguments: [--preflight]
 automation_preflight_required: false
 automation_requirements: ""

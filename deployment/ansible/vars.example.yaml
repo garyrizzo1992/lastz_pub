@@ -2,7 +2,9 @@
 # Run as the logged-in macOS user. Override defaults with -e @settings.yaml.
 automation_revision: main
 # For reproducible deployment/rollback, use a reviewed full commit SHA.
-automation_repo_url: https://github.com/garyrizzo1992/lastz_pub.git
+automation_repo_url: git@github.com:YOUR_ORG/YOUR_PRIVATE_APP.git
+automation_arguments: ["{{ automation_repo_dir }}/main.py"]
+automation_requirements: requirements-runtime.txt
 automation_python_formula: python@3.13
 automation_python_name: python3.13
 automation_optional_packages: []

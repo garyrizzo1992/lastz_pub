@@ -28,7 +28,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - run: pip install -e .
+      # Adapt these two commands to your private application's test suite.
+      - run: pip install -r requirements-runtime.txt
       - run: python -m unittest discover -s tests
   deploy:
     needs: verify
@@ -54,6 +55,7 @@ jobs:
           set -eu
           "$RUNNER_TEMP/automation-tools/bin/ansible-playbook" \
             -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml \
+            -e @settings.yaml \
             -e "automation_revision=$DEPLOY_SHA" -e "automation_repo_url=$DEPLOY_URL"
 # The deployment checkout needs read access to the target repository.
 # Keep machine overrides and secrets outside this example; use a protected vars

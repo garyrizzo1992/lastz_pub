@@ -27,7 +27,7 @@ class DeploymentTests(unittest.TestCase):
             "automation_repo_dir": "/Users/Demo & Test/Applications/Worker",
             "automation_home": "/Users/Demo & Test", "automation_label": "org.example.worker",
             "automation_brew_prefix": "/opt/homebrew", "automation_retry_seconds": 60,
-            "automation_path": "/usr/bin:/bin", "automation_arguments": ["-m", "mobile_automation.worker"],
+            "automation_path": "/usr/bin:/bin", "automation_arguments": ["/Applications/Example App/main.py"],
             "automation_preflight_arguments": ["--preflight"], "automation_environment": {},
             "automation_secrets": {"EXAMPLE": "spaces ' quotes & symbols"},
         }

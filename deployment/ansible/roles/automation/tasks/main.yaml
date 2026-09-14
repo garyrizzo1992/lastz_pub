@@ -1,4 +1,11 @@
 ---
+- name: Require application configuration
+  ansible.builtin.assert:
+    that:
+      - automation_repo_url | length > 0
+      - automation_arguments | length > 0
+    fail_msg: Supply your application repository URL and Python entry point; this repository contains deployment tooling only.
+
 - name: Require macOS user deployment
   ansible.builtin.assert:
     that:
