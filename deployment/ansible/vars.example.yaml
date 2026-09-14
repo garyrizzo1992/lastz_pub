@@ -1,0 +1,9 @@
+---
+# Run as the logged-in macOS user. Override defaults with -e @settings.yaml.
+automation_revision: main
+# For reproducible deployment/rollback, use a reviewed full commit SHA.
+automation_repo_url: https://github.com/garyrizzo1992/lastz_pub.git
+automation_python_formula: python@3.13
+automation_python_name: python3.13
+automation_optional_packages: []
+# A real adapter could require: [android-platform-tools, tesseract]

@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+env_file={{ (automation_data_dir ~ '/worker.env') | quote }}
+if [[ -f "$env_file" ]]; then
+    set -a
+    source "$env_file"
+    set +a
+fi
+export PATH={{ automation_path | quote }}
+export AUTOMATION_DATA_DIR={{ automation_data_dir | quote }}
+export PYTHONUNBUFFERED=1
+export PYTHONDONTWRITEBYTECODE=1
+{% for key, value in automation_environment.items() %}
+export {{ key }}={{ value | string | quote }}
+{% endfor %}
+cd {{ automation_repo_dir | quote }}
+python_bin={{ (automation_repo_dir ~ '/.venv/bin/python') | quote }}
+command_args=({% for arg in automation_arguments %}{{ arg | quote }} {% endfor %})
+if [[ "${1:-}" == "--preflight" ]]; then
+    exec "$python_bin" "${command_args[@]}" {% for arg in automation_preflight_arguments %}{{ arg | quote }} {% endfor %}
+fi
+if [[ -d {{ (automation_data_dir ~ '/deploy.lock') | quote }} ]]; then
+    printf 'Deployment in progress; startup deferred.\n' >&2
+    exit 1
+fi
+exec "$python_bin" "${command_args[@]}" "$@"

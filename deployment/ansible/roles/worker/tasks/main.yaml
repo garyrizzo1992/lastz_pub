@@ -1,0 +1,201 @@
+---
+- name: Require macOS user deployment
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.system == 'Darwin'
+      - ansible_facts.user_uid | int != 0
+      - automation_repo_dir != automation_home
+      - automation_data_dir != automation_repo_dir
+      - automation_label is match('^[a-zA-Z0-9.-]+$')
+    fail_msg: Run as the logged-in macOS user with separate source and data directories.
+
+- name: Check Homebrew
+  ansible.builtin.stat:
+    path: "{{ automation_brew_prefix }}/bin/brew"
+  register: worker_brew
+
+- name: Require Homebrew bootstrap
+  ansible.builtin.assert:
+    that: worker_brew.stat.exists
+    fail_msg: Install Homebrew and Git command-line tools on the target first.
+
+- name: Verify Git and the GUI session
+  ansible.builtin.command:
+    argv: "{{ item }}"
+  loop:
+    - [/usr/bin/git, --version]
+    - [launchctl, print, "gui/{{ ansible_facts.user_uid }}"]
+  changed_when: false
+
+- name: Validate secret variable names
+  ansible.builtin.assert:
+    that:
+      - item is match('^[A-Z_][A-Z0-9_]*$')
+  loop: "{{ (automation_secrets.keys() | list) + (automation_environment.keys() | list) }}"
+  no_log: true
+
+- name: Validate migration destinations
+  ansible.builtin.assert:
+    that:
+      - not item.dest.startswith('/')
+      - "'..' not in item.dest.split('/')"
+  loop: "{{ automation_migrations }}"
+
+- name: Install host packages
+  community.general.homebrew:
+    name: "{{ [automation_python_formula, 'logrotate'] + automation_optional_packages }}"
+    state: present
+    path: "{{ automation_brew_prefix }}/bin"
+
+- name: Create runtime directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+  loop:
+    - "{{ automation_repo_dir | dirname }}"
+    - "{{ automation_data_dir }}"
+    - "{{ automation_data_dir }}/logs"
+    - "{{ automation_home }}/Library/LaunchAgents"
+
+- name: Acquire exclusive deployment lock
+  ansible.builtin.command:
+    argv: [mkdir, "{{ automation_data_dir }}/deploy.lock"]
+  changed_when: true
+
+- name: Deploy with the registered worker stopped
+  block:
+    - name: Inspect existing worker registration
+      ansible.builtin.command:
+        argv: [launchctl, print, "gui/{{ ansible_facts.user_uid }}/{{ automation_label }}"]
+      register: worker_existing
+      changed_when: false
+      failed_when: false
+
+    - name: Unload worker before changing its files
+      ansible.builtin.command:
+        argv: [launchctl, bootout, "gui/{{ ansible_facts.user_uid }}/{{ automation_label }}"]
+      when: worker_existing.rc == 0
+      changed_when: true
+
+    - name: Preserve configured legacy state
+      ansible.builtin.include_tasks: migrate.yaml
+      loop: "{{ automation_migrations }}"
+      loop_control:
+        loop_var: worker_migration
+
+    - name: Check out the requested revision
+      ansible.builtin.git:
+        repo: "{{ automation_repo_url }}"
+        dest: "{{ automation_repo_dir }}"
+        version: "{{ automation_revision }}"
+        key_file: "{{ automation_ssh_key if automation_ssh_key else omit }}"
+        accept_newhostkey: true
+        force: false
+      register: worker_checkout
+
+    - name: Create worker virtual environment
+      ansible.builtin.command:
+        argv: ["{{ automation_python }}", -m, venv, "{{ automation_repo_dir }}/.venv"]
+        creates: "{{ automation_repo_dir }}/.venv/bin/python"
+
+    - name: Install requirements when configured
+      ansible.builtin.pip:
+        requirements: "{{ automation_repo_dir }}/{{ automation_requirements }}"
+        executable: "{{ automation_repo_dir }}/.venv/bin/pip"
+      when: automation_requirements | length > 0
+
+    - name: Install the portfolio package
+      ansible.builtin.pip:
+        name: "{{ automation_repo_dir }}"
+        editable: true
+        executable: "{{ automation_repo_dir }}/.venv/bin/pip"
+      when: automation_requirements | length == 0
+
+    - name: Install optional vaulted environment
+      ansible.builtin.template:
+        src: worker.env.j2
+        dest: "{{ automation_data_dir }}/worker.env"
+        mode: "0600"
+      when: automation_secrets | length > 0
+      no_log: true
+
+    - name: Install launcher outside the source checkout
+      ansible.builtin.template:
+        src: run_worker.sh.j2
+        dest: "{{ automation_data_dir }}/run_worker.sh"
+        mode: "0700"
+
+    - name: Validate and install LaunchAgent
+      ansible.builtin.template:
+        src: worker.plist.j2
+        dest: "{{ automation_plist }}"
+        mode: "0644"
+        validate: /usr/bin/plutil -lint %s
+
+    - name: Install rotation configuration
+      ansible.builtin.template:
+        src: logrotate.conf.j2
+        dest: "{{ automation_data_dir }}/logrotate.conf"
+        mode: "0600"
+
+    - name: Validate and install rotation agent
+      ansible.builtin.template:
+        src: logrotate.plist.j2
+        dest: "{{ automation_home }}/Library/LaunchAgents/{{ automation_label }}.logs.plist"
+        mode: "0644"
+        validate: /usr/bin/plutil -lint %s
+      notify: Reload worker log rotation
+
+    - name: Run preflight for the installed revision
+      ansible.builtin.command:
+        argv: [/bin/bash, "{{ automation_data_dir }}/run_worker.sh", --preflight]
+      register: worker_preflight
+      changed_when: false
+      failed_when: automation_preflight_required | bool and worker_preflight.rc != 0
+
+    - name: Report revision and preflight outcome
+      ansible.builtin.debug:
+        msg: "Installed {{ worker_checkout.after }}; preflight exit {{ worker_preflight.rc }}. Run the external launcher with --preflight locally for details."
+      # Avoid publishing command output that an application could fill with secrets.
+  always:
+    - name: Release deployment lock
+      ansible.builtin.command:
+        argv: [rmdir, "{{ automation_data_dir }}/deploy.lock"]
+      changed_when: true
+
+- name: Enable worker at user login
+  ansible.builtin.command:
+    argv: [launchctl, enable, "gui/{{ ansible_facts.user_uid }}/{{ automation_label }}"]
+  changed_when: false
+
+- name: Start deployed worker
+  ansible.builtin.command:
+    argv: [launchctl, bootstrap, "gui/{{ ansible_facts.user_uid }}", "{{ automation_plist }}"]
+  changed_when: true
+
+- name: Apply rotation changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Inspect rotation agent
+  ansible.builtin.command:
+    argv: [launchctl, print, "gui/{{ ansible_facts.user_uid }}/{{ automation_label }}.logs"]
+  register: worker_rotation
+  changed_when: false
+  failed_when: false
+
+- name: Enable rotation agent
+  ansible.builtin.command:
+    argv: [launchctl, enable, "gui/{{ ansible_facts.user_uid }}/{{ automation_label }}.logs"]
+  changed_when: false
+
+- name: Load rotation if absent
+  ansible.builtin.command:
+    argv: [launchctl, bootstrap, "gui/{{ ansible_facts.user_uid }}", "{{ automation_home }}/Library/LaunchAgents/{{ automation_label }}.logs.plist"]
+  when: worker_rotation.rc != 0
+  changed_when: true
+
+- name: Verify worker registration
+  ansible.builtin.command:
+    argv: [launchctl, print, "gui/{{ ansible_facts.user_uid }}/{{ automation_label }}"]
+  changed_when: false

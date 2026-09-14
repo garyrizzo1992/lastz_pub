@@ -1,0 +1,4 @@
+---
+# Example only. Copy to vault.yaml, replace the value, then ansible-vault encrypt.
+automation_secrets:
+  EXAMPLE_API_TOKEN: replace-with-a-demo-value

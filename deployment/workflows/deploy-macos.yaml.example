@@ -1,0 +1,60 @@
+# Copy into .github/workflows/ only in a trusted private deployment repository.
+name: Deploy reviewed worker revision
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Reviewed branch, tag, or commit to validate and deploy
+        required: true
+        default: main
+permissions:
+  contents: read
+concurrency:
+  group: macos-worker-deployment
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -e .
+      - run: python -m unittest discover -s tests
+  deploy:
+    needs: verify
+    runs-on: [self-hosted, macOS, ARM64, automation-deploy]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+      - name: Prepare isolated Ansible tools
+        shell: bash
+        run: |
+          set -eu
+          /opt/homebrew/bin/python3 -m venv "$RUNNER_TEMP/automation-tools"
+          "$RUNNER_TEMP/automation-tools/bin/pip" install ansible-core==2.19.3
+          "$RUNNER_TEMP/automation-tools/bin/ansible-galaxy" collection install -r deployment/ansible/requirements.yaml
+      - name: Deploy the tested commit
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ needs.verify.outputs.sha }}
+          DEPLOY_URL: ${{ github.server_url }}/${{ github.repository }}.git
+        run: |
+          set -eu
+          "$RUNNER_TEMP/automation-tools/bin/ansible-playbook" \
+            -i deployment/ansible/inventory.example.ini deployment/ansible/playbook.yaml \
+            -e "automation_revision=$DEPLOY_SHA" -e "automation_repo_url=$DEPLOY_URL"
+# The deployment checkout needs read access to the target repository.
+# Keep machine overrides and secrets outside this example; use a protected vars
+# file passed with -e @/path/to/settings.yaml when adapting it.

@@ -9,6 +9,11 @@ This repository intentionally contains no application-specific flows, real
 screenshots, Android identifiers, accounts, credentials, or deployment access.
 The accompanying production system is private.
 
+See [Deploying the worker](deployment/README.md) for the reusable macOS Ansible
+role, LaunchAgent, state migration, Vault configuration, log rotation, and an
+inactive private CI/CD workflow example. The role deploys a persistent simulator
+from this repository; no phone or production runner is needed.
+
 ## What it demonstrates
 
 - A device interface that separates automation logic from ADB, Appium, or a
@@ -38,7 +43,7 @@ result, and stores the outcome in a temporary external state directory.
 
 ```mermaid
 flowchart LR
-    Scheduler --> Workflow
+    Worker[Periodic simulator worker] --> Workflow
     Workflow -->|observe| Device[Device client]
     Workflow -->|confirmed tap| Device
     Device --> Simulator[Simulator or real adapter]

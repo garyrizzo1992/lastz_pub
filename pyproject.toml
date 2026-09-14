@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools==80.9.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,7 +9,7 @@ description = "Confirmed, stateful workflows for mobile UI automation"
 requires-python = ">=3.11"
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["Jinja2==3.1.6", "PyYAML==6.0.3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

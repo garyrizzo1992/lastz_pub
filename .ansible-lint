@@ -1,0 +1,5 @@
+profile: basic
+skip_list:
+  - yaml[line-length]
+exclude_paths:
+  - deployment/ansible/vault.example.yaml

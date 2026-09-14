@@ -1,0 +1,6 @@
+---
+- name: Deploy the synthetic mobile automation worker
+  hosts: automation
+  become: false
+  roles:
+    - worker

@@ -1,0 +1,8 @@
+"{{ automation_data_dir }}/logs/worker.stdout.log" "{{ automation_data_dir }}/logs/worker.stderr.log" {
+    size 10M
+    rotate 7
+    compress
+    missingok
+    notifempty
+    copytruncate
+}

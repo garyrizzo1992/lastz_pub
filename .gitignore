@@ -5,3 +5,9 @@ __pycache__/
 *.egg-info/
 runtime/
 .env
+.ansible-venv/
+settings.yaml
+vault.yaml
+inventory.ini
+build/
+dist/

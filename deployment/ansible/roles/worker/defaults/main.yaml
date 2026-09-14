@@ -1,0 +1,25 @@
+---
+automation_home: "{{ ansible_facts.user_dir }}"
+automation_brew_prefix: "{{ '/opt/homebrew' if ansible_facts.architecture == 'arm64' else '/usr/local' }}"
+automation_python_formula: python@3.13
+automation_python_name: python3.13
+automation_python: "{{ automation_brew_prefix }}/opt/{{ automation_python_formula }}/bin/{{ automation_python_name }}"
+automation_path: "{{ automation_brew_prefix }}/bin:{{ automation_brew_prefix }}/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
+automation_repo_url: https://github.com/garyrizzo1992/lastz_pub.git
+automation_revision: main
+automation_repo_dir: "{{ automation_home }}/Applications/mobile-automation"
+automation_data_dir: "{{ automation_home }}/Library/Application Support/MobileAutomation"
+automation_label: org.example.mobile-automation
+automation_plist: "{{ automation_home }}/Library/LaunchAgents/{{ automation_label }}.plist"
+automation_arguments: [-m, mobile_automation.worker]
+automation_preflight_arguments: [--preflight]
+automation_preflight_required: false
+automation_requirements: ""
+automation_optional_packages: []
+automation_ssh_key: ""
+automation_secrets: {}
+automation_environment: {}
+# Copy legacy state only if the destination is absent; originals stay intact.
+# Each entry: {src: /absolute/old/state.json, dest: workflow_state.json}
+automation_migrations: []
+automation_retry_seconds: 60

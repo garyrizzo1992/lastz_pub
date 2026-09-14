@@ -1,0 +1,10 @@
+---
+- name: Reload worker log rotation
+  ansible.builtin.shell: |
+    set -eu
+    if launchctl print {{ ('gui/' ~ ansible_facts.user_uid ~ '/' ~ automation_label ~ '.logs') | quote }} >/dev/null 2>&1; then
+      launchctl bootout {{ ('gui/' ~ ansible_facts.user_uid ~ '/' ~ automation_label ~ '.logs') | quote }}
+    fi
+    launchctl enable {{ ('gui/' ~ ansible_facts.user_uid ~ '/' ~ automation_label ~ '.logs') | quote }}
+    launchctl bootstrap {{ ('gui/' ~ ansible_facts.user_uid) | quote }} {{ (automation_home ~ '/Library/LaunchAgents/' ~ automation_label ~ '.logs.plist') | quote }}
+  changed_when: true
