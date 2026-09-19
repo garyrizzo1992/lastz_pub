@@ -31,6 +31,7 @@ class DeploymentTests(unittest.TestCase):
             "automation_home": "/Users/Demo & Test", "automation_label": "org.example.worker",
             "automation_brew_prefix": "/opt/homebrew", "automation_retry_seconds": 60,
             "automation_path": "/usr/bin:/bin", "automation_arguments": ["/Applications/Example App/main.py"],
+            "automation_launcher": "",
             "automation_preflight_arguments": ["--preflight"], "automation_environment": {},
             "automation_secrets": {"EXAMPLE": "spaces ' quotes & symbols"},
         }
@@ -55,6 +56,13 @@ class DeploymentTests(unittest.TestCase):
     def test_preflight_arguments_remain_separate_from_fi(self):
         source = self.env.get_template("run_worker.sh.j2").render(**self.values)
         self.assertIn('--preflight\nfi', source)
+
+    def test_worker_delegates_to_an_optional_application_launcher(self):
+        source = self.env.get_template("run_worker.sh.j2").render(
+            **(self.values | {"automation_launcher": "/Applications/Example App/run.sh"})
+        )
+        self.assertIn("launcher='/Applications/Example App/run.sh'", source)
+        self.assertIn('exec "$launcher" "$@"', source)
 
     def test_preflight_is_in_tasks_and_lock_has_cleanup(self):
         tasks = yaml.safe_load((ROOT / "deployment/ansible/roles/automation/tasks/main.yaml").read_text())

@@ -12,6 +12,9 @@ automation_data_dir: "{{ automation_home }}/Library/Application Support/MobileAu
 automation_label: org.example.mobile-automation
 automation_plist: "{{ automation_home }}/Library/LaunchAgents/{{ automation_label }}.plist"
 automation_arguments: []
+## Optional application-owned launcher. When set, the worker delegates all
+## lifecycle behavior (preflight, source sync, retry/backoff) to it.
+automation_launcher: ""
 automation_preflight_arguments: [--preflight]
 automation_preflight_required: false
 automation_requirements: ""

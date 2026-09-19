@@ -15,7 +15,15 @@ export {{ key }}={{ value | string | quote }}
 {% endfor %}
 cd {{ automation_repo_dir | quote }}
 python_bin={{ (automation_repo_dir ~ '/.venv/bin/python') | quote }}
+launcher={{ automation_launcher | quote }}
 command_args=({% for arg in automation_arguments %}{{ arg | quote }} {% endfor %})
+if [[ -n "$launcher" ]]; then
+    if [[ ! -x "$launcher" ]]; then
+        printf 'Configured application launcher is not executable: %s\n' "$launcher" >&2
+        exit 1
+    fi
+    exec "$launcher" "$@"
+fi
 if [[ "${1:-}" == "--preflight" ]]; then
     exec "$python_bin" "${command_args[@]}" {{ automation_preflight_arguments | map('quote') | join(' ') }}
 fi
